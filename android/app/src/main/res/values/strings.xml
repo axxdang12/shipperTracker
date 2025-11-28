@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">shipperTracker</string>
+    <string name="title_activity_main">shipperTracker</string>
+    <string name="package_name">com.shipperTracker.app</string>
+    <string name="custom_url_scheme">com.shipperTracker.app</string>
+</resources>
