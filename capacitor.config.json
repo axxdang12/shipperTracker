@@ -1,0 +1,8 @@
+{
+  "appId": "com.shipperbook.app",
+  "appName": "ShipperBook",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  }
+}
