@@ -1,0 +1,5 @@
+{
+  "name": "ShipperBook",
+  "description": "Ứng dụng quản lý đơn hàng và doanh thu dành riêng cho Shipper. Giao diện tối ưu cho mobile, hỗ trợ ghi chép nhanh và thống kê tiền mặt/chuyển khoản.",
+  "requestFramePermissions": []
+}
