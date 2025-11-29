@@ -3,6 +3,11 @@ export enum PaymentMethod {
   TRANSFER = 'TRANSFER'
 }
 
+export enum Shift {
+  DAY = 'DAY',
+  NIGHT = 'NIGHT'
+}
+
 export interface Order {
   id: string;
   orderCode: string;
@@ -10,6 +15,7 @@ export interface Order {
   paymentMethod: PaymentMethod;
   timestamp: number;
   note?: string;
+  shift?: Shift;
 }
 
 export interface DailyStats {

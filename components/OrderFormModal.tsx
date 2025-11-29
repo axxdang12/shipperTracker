@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, Banknote, CreditCard, Save, FileText } from 'lucide-react';
-import { PaymentMethod, Order } from '../types';
+import { X, Banknote, CreditCard, Save, FileText, Sun, Moon } from 'lucide-react';
+import { PaymentMethod, Order, Shift } from '../types';
 import { Button } from './Button';
 import { generateId } from '../utils';
 
@@ -15,6 +15,7 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({ isOpen, onClose,
   const [orderCode, setOrderCode] = useState('');
   const [amount, setAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.CASH);
+  const [shift, setShift] = useState<Shift>(Shift.DAY);
   const [error, setError] = useState('');
 
   // Reset form when modal opens
@@ -24,6 +25,10 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({ isOpen, onClose,
       setAmount('');
       setPaymentMethod(PaymentMethod.CASH);
       setError('');
+      
+      // Auto-detect shift based on current hour
+      const currentHour = new Date().getHours();
+      setShift(currentHour >= 18 ? Shift.NIGHT : Shift.DAY);
     }
   }, [isOpen]);
 
@@ -52,6 +57,7 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({ isOpen, onClose,
       amount: Number(amount),
       paymentMethod,
       timestamp: orderDate.getTime(),
+      shift: shift
     };
 
     onSave(newOrder);
@@ -77,8 +83,36 @@ export const OrderFormModal: React.FC<OrderFormModalProps> = ({ isOpen, onClose,
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-6">
+        <form onSubmit={handleSubmit} className="p-5 space-y-5">
           
+          {/* Shift Selection */}
+          <div className="bg-gray-50 p-1 rounded-xl flex">
+            <button
+              type="button"
+              onClick={() => setShift(Shift.DAY)}
+              className={`flex-1 flex items-center justify-center py-2 rounded-lg text-sm font-semibold transition-all ${
+                shift === Shift.DAY 
+                  ? 'bg-white text-orange-600 shadow-sm' 
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <Sun size={18} className="mr-2" />
+              Ca Sáng
+            </button>
+            <button
+              type="button"
+              onClick={() => setShift(Shift.NIGHT)}
+              className={`flex-1 flex items-center justify-center py-2 rounded-lg text-sm font-semibold transition-all ${
+                shift === Shift.NIGHT 
+                  ? 'bg-indigo-900 text-white shadow-sm' 
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <Moon size={18} className="mr-2" />
+              Ca Tối
+            </button>
+          </div>
+
           {/* Note Input */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700 flex items-center gap-2">

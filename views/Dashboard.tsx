@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Order, PaymentMethod } from '../types';
-import { formatCurrency, calculateDailyStats, isSameDay, isToday } from '../utils';
-import { Package, Banknote, CreditCard, Trash2, Plus, TrendingUp } from 'lucide-react';
+import { Order, PaymentMethod, Shift } from '../types';
+import { formatCurrency, isSameDay, isToday } from '../utils';
+import { Package, Banknote, CreditCard, Trash2, Plus, TrendingUp, Sun, Moon, Layers } from 'lucide-react';
 import { Button } from '../components/Button';
 import { OrderFormModal } from '../components/OrderFormModal';
 import { format } from 'date-fns';
@@ -16,16 +16,38 @@ interface DashboardProps {
 
 export const Dashboard: React.FC<DashboardProps> = ({ orders, selectedDate, onAddOrder, onDeleteOrder }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [filterShift, setFilterShift] = useState<'ALL' | Shift>('ALL');
   
-  // Calculate stats based on selected Date
-  const stats = calculateDailyStats(orders, selectedDate);
-  const totalRevenue = stats.cash + stats.transfer;
-  
-  // Get orders for selected date sorted by newest first
+  // Helper to determine order shift (compatible with old data)
+  const getOrderShift = (order: Order): Shift => {
+    if (order.shift) return order.shift;
+    // Fallback logic for old data: >= 18h is Night Shift
+    const hour = new Date(order.timestamp).getHours();
+    return hour >= 18 ? Shift.NIGHT : Shift.DAY;
+  };
+
+  // Filter orders by Date AND Shift
   const displayOrders = orders
     .filter(o => isSameDay(o.timestamp, selectedDate))
+    .filter(o => filterShift === 'ALL' || getOrderShift(o) === filterShift)
     .sort((a, b) => b.timestamp - a.timestamp);
 
+  // Calculate stats based on FILTERED orders
+  const stats = displayOrders.reduce(
+    (acc, order) => {
+      acc.count += 1;
+      if (order.paymentMethod === PaymentMethod.CASH) {
+        acc.cash += order.amount;
+      } else {
+        acc.transfer += order.amount;
+      }
+      return acc;
+    },
+    { cash: 0, transfer: 0, count: 0 }
+  );
+  
+  const totalRevenue = stats.cash + stats.transfer;
+  
   const isSelectedDateToday = isToday(selectedDate.getTime());
   const dateLabel = isSelectedDateToday 
     ? "Hôm nay" 
@@ -34,6 +56,34 @@ export const Dashboard: React.FC<DashboardProps> = ({ orders, selectedDate, onAd
   return (
     <div className="space-y-6 pb-24">
       
+      {/* Shift Filter Control */}
+      <div className="bg-white p-1 rounded-xl shadow-sm border border-gray-200 flex">
+        <button
+          onClick={() => setFilterShift('ALL')}
+          className={`flex-1 py-2 text-sm font-medium rounded-lg flex items-center justify-center transition-all ${
+            filterShift === 'ALL' ? 'bg-gray-800 text-white shadow' : 'text-gray-500 hover:bg-gray-50'
+          }`}
+        >
+          <Layers size={16} className="mr-1.5" /> Cả ngày
+        </button>
+        <button
+          onClick={() => setFilterShift(Shift.DAY)}
+          className={`flex-1 py-2 text-sm font-medium rounded-lg flex items-center justify-center transition-all ${
+            filterShift === Shift.DAY ? 'bg-orange-500 text-white shadow' : 'text-gray-500 hover:bg-gray-50'
+          }`}
+        >
+          <Sun size={16} className="mr-1.5" /> Ca Sáng
+        </button>
+        <button
+          onClick={() => setFilterShift(Shift.NIGHT)}
+          className={`flex-1 py-2 text-sm font-medium rounded-lg flex items-center justify-center transition-all ${
+            filterShift === Shift.NIGHT ? 'bg-indigo-600 text-white shadow' : 'text-gray-500 hover:bg-gray-50'
+          }`}
+        >
+          <Moon size={16} className="mr-1.5" /> Ca Tối
+        </button>
+      </div>
+
       {/* Summary Cards Grid */}
       <div className="grid grid-cols-2 gap-3">
         
@@ -41,9 +91,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ orders, selectedDate, onAd
         <div className="col-span-2 bg-gradient-to-r from-brand-600 to-brand-500 rounded-2xl p-5 text-white shadow-lg shadow-brand-500/30">
           <div className="flex items-center space-x-2 mb-1 opacity-90">
             <TrendingUp size={20} />
-            <span className="text-sm font-medium">Tổng doanh thu {dateLabel}</span>
+            <span className="text-sm font-medium">Doanh thu {dateLabel}</span>
           </div>
           <p className="text-3xl font-bold tracking-tight">{formatCurrency(totalRevenue)}</p>
+          <div className="mt-1 text-xs opacity-70 font-medium">
+             {filterShift === 'ALL' ? '(Cả ngày)' : filterShift === Shift.DAY ? '(Ca Sáng)' : '(Ca Tối)'}
+          </div>
         </div>
 
         {/* Cash Stats */}
@@ -71,7 +124,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ orders, selectedDate, onAd
         {/* Total Orders Count (Full Width Strip) */}
         <div className="col-span-2 bg-white px-4 py-3 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
           <span className="text-sm font-medium text-gray-500 flex items-center gap-2">
-            <Package size={18} /> Tổng số đơn đã giao
+            <Package size={18} /> Số đơn {filterShift === 'ALL' ? '' : filterShift === Shift.DAY ? 'Ca Sáng' : 'Ca Tối'}
           </span>
           <span className="text-xl font-bold text-gray-800">{stats.count}</span>
         </div>
@@ -79,7 +132,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ orders, selectedDate, onAd
 
       {/* Action Button */}
       <div className="flex justify-between items-center px-1 pt-2">
-        <h2 className="text-xl font-bold text-gray-800">Danh sách đơn ({displayOrders.length})</h2>
+        <h2 className="text-xl font-bold text-gray-800">Danh sách ({displayOrders.length})</h2>
       </div>
 
       {/* Orders List */}
@@ -87,49 +140,57 @@ export const Dashboard: React.FC<DashboardProps> = ({ orders, selectedDate, onAd
         {displayOrders.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-gray-400 bg-white rounded-2xl border-2 border-dashed border-gray-200">
             <Package size={48} className="mb-3 opacity-20" />
-            <p className="text-sm font-medium">Chưa có đơn hàng nào cho {dateLabel}</p>
+            <p className="text-sm font-medium">Chưa có đơn hàng nào</p>
           </div>
         ) : (
-          displayOrders.map((order) => (
-            <div 
-              key={order.id} 
-              className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center group active:scale-[0.99] transition-transform"
-            >
-              <div className="flex items-center space-x-4 overflow-hidden">
-                <div className={`p-3 rounded-full flex-shrink-0 ${order.paymentMethod === PaymentMethod.CASH ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-600'}`}>
-                   {order.paymentMethod === PaymentMethod.CASH ? <Banknote size={20} /> : <CreditCard size={20} />}
-                </div>
-                <div className="min-w-0">
-                  {/* Note/Description */}
-                  <h3 className="font-bold text-gray-800 text-lg truncate pr-2">
-                    {order.orderCode ? order.orderCode : <span className="text-gray-400 font-normal italic">Không có ghi chú</span>}
-                  </h3>
-                  <div className="flex items-center space-x-2 text-xs text-gray-500">
-                     <span>{new Date(order.timestamp).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit'})}</span>
-                     <span>•</span>
-                     <span className={order.paymentMethod === PaymentMethod.CASH ? 'text-green-600 font-medium' : 'text-blue-600 font-medium'}>
-                       {order.paymentMethod === PaymentMethod.CASH ? 'Tiền mặt' : 'Chuyển khoản'}
-                     </span>
+          displayOrders.map((order) => {
+            const shift = getOrderShift(order);
+            return (
+              <div 
+                key={order.id} 
+                className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center group active:scale-[0.99] transition-transform"
+              >
+                <div className="flex items-center space-x-4 overflow-hidden">
+                  <div className={`p-3 rounded-full flex-shrink-0 ${order.paymentMethod === PaymentMethod.CASH ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-600'}`}>
+                    {order.paymentMethod === PaymentMethod.CASH ? <Banknote size={20} /> : <CreditCard size={20} />}
+                  </div>
+                  <div className="min-w-0">
+                    {/* Note/Description */}
+                    <div className="flex items-center gap-2">
+                       <h3 className="font-bold text-gray-800 text-lg truncate pr-2">
+                        {order.orderCode ? order.orderCode : <span className="text-gray-400 font-normal italic">Không có ghi chú</span>}
+                      </h3>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2 text-xs text-gray-500">
+                      {/* Shift Icon */}
+                      {shift === Shift.DAY ? <Sun size={12} className="text-orange-500" /> : <Moon size={12} className="text-indigo-600" />}
+                      <span>{new Date(order.timestamp).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit'})}</span>
+                      <span>•</span>
+                      <span className={order.paymentMethod === PaymentMethod.CASH ? 'text-green-600 font-medium' : 'text-blue-600 font-medium'}>
+                        {order.paymentMethod === PaymentMethod.CASH ? 'Tiền mặt' : 'Chuyển khoản'}
+                      </span>
+                    </div>
                   </div>
                 </div>
+                <div className="flex flex-col items-end space-y-2 flex-shrink-0">
+                  <span className="text-green-600 font-bold text-lg">
+                    +{formatCurrency(order.amount)}
+                  </span>
+                  <button 
+                    onClick={() => {
+                      if(window.confirm('Bạn có chắc chắn muốn xóa đơn này?')) {
+                          onDeleteOrder(order.id);
+                      }
+                    }}
+                    className="p-1 text-gray-300 hover:text-red-500 transition-colors"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
               </div>
-              <div className="flex flex-col items-end space-y-2 flex-shrink-0">
-                <span className="text-green-600 font-bold text-lg">
-                  +{formatCurrency(order.amount)}
-                </span>
-                <button 
-                  onClick={() => {
-                     if(window.confirm('Bạn có chắc chắn muốn xóa đơn này?')) {
-                        onDeleteOrder(order.id);
-                     }
-                  }}
-                  className="p-1 text-gray-300 hover:text-red-500 transition-colors"
-                >
-                  <Trash2 size={18} />
-                </button>
-              </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 
